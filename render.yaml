@@ -1,0 +1,21 @@
+services:
+  - type: worker
+    name: exoforge-trading-bot
+    env: docker
+    dockerfilePath: ./Dockerfile
+    region: frankfurt # Adjust to the Render region closest to Gate.io's servers for lower latency
+    plan: starter # Adjust based on needed RAM (pandas requires slightly more memory)
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      # Sensitive variables are synced from the Render Dashboard, NOT hardcoded here
+      - key: GATEIO_API_KEY
+        sync: false
+      - key: GATEIO_API_SECRET
+        sync: false
+      - key: SUPABASE_DB_URL
+        sync: false
+      - key: DISCORD_WEBHOOK_URL
+        sync: false
