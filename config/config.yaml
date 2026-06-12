@@ -1,0 +1,15 @@
+trading:
+  max_open_positions: 5
+  daily_loss_limit_usd: 100.0
+  max_drawdown_pct: 5.0
+  default_risk_per_trade_pct: 1.0
+
+symbols:
+  - "BTC_USDT"
+  - "ETH_USDT"
+  - "SOL_USDT"
+
+intervals:
+  - "15m"
+  - "1h"
+  - "4h"
