@@ -5,3 +5,4 @@ pydantic-settings
 PyYAML
 SQLAlchemy
 python-dotenv
+pandas
