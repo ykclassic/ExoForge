@@ -1,0 +1,7 @@
+aiohttp
+asyncpg
+pydantic
+pydantic-settings
+PyYAML
+SQLAlchemy
+python-dotenv
