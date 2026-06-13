@@ -19,13 +19,21 @@ class DatabaseClient:
     """
 
     def __init__(self, config: EnvironmentConfig):
+        # HARD FAIL-SAFE: Ensure the connection string uses the asyncpg driver.
+        # This prevents SQLAlchemy from attempting to load the synchronous psycopg2 driver.
+        db_url = config.SUPABASE_DB_URL
+        if db_url.startswith("postgres://"):
+            db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif db_url.startswith("postgresql://") and not db_url.startswith("postgresql+asyncpg://"):
+            db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
         # Asyncpg engine creation
         self.engine = create_async_engine(
-            config.SUPABASE_DB_URL,
+            db_url,
             echo=False,
             pool_size=10,
             max_overflow=20,
-            pool_recycle=1800, # Recycle connections every 30 mins
+            pool_recycle=1800, # Recycle connections every 30 mins to prevent stale drops
         )
         self.AsyncSessionLocal = async_sessionmaker(
             bind=self.engine, 
