@@ -79,7 +79,7 @@ class BotOrchestrator:
             if not response or not isinstance(response, list):
                 return pd.DataFrame()
                 
-            df = pd.DataFrame(response, columns=["timestamp", "volume", "close", "high", "low", "open"])
+            df = pd.DataFrame(response, columns=["timestamp", "volume", "close", "high", "low", "open", "quote_volume", "trades"])
             for col in ["volume", "close", "high", "low", "open"]:
                 df[col] = df[col].astype(float)
                 
