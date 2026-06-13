@@ -31,7 +31,7 @@ class DiscordAlerter:
 
         payload = {
             "username": f"EXOFORGE Bot ({self.environment.upper()})",
-            "avatar_url": "https://i.imgur.com/x4WvQ9M.png",  # Placeholder bot icon
+            "avatar_url": "https://i.imgur.com/x4WvQ9M.png",
             "embeds": [embed]
         }
 
@@ -48,7 +48,7 @@ class DiscordAlerter:
 
     async def notify_trade_entry(self, trade: Trade, signal: Signal):
         """Sends an alert when a new position is successfully opened."""
-        color = 0x00FF00 if trade.direction.name == "LONG" else 0xFF0000  # Green for Long, Red for Short
+        color = 0x00FF00 if trade.direction.name == "LONG" else 0xFF0000
         
         embed = {
             "title": f"🚨 NEW POSITION OPENED: {trade.pair}",
@@ -70,7 +70,7 @@ class DiscordAlerter:
         if trade.pnl is None:
             trade.pnl = Decimal('0.0')
             
-        is_profit = trade.pnl > 0
+        is_profit = trade.pnl > Decimal('0.0')
         color = 0x00FF00 if is_profit else 0xFF0000
         pnl_symbol = "+" if is_profit else ""
 
@@ -93,7 +93,7 @@ class DiscordAlerter:
         """Alerts administrators when a portfolio circuit breaker is tripped."""
         embed = {
             "title": "⚠️ RISK CIRCUIT BREAKER TRIPPED",
-            "color": 0xFFA500,  # Orange
+            "color": 0xFFA500,
             "description": "The bot has halted new trade execution due to a risk threshold breach.",
             "fields": [
                 {"name": "Breach Reason", "value": reason, "inline": False},
@@ -105,12 +105,18 @@ class DiscordAlerter:
 
     async def notify_system_error(self, component: str, error_msg: str):
         """Alerts administrators of critical system failures."""
+        
+        # Safely format the error block using triple quotes to prevent literal newline syntax errors
+        formatted_error = f"""```text
+{error_msg[:1000]}
+```"""
+        
         embed = {
             "title": "❌ CRITICAL SYSTEM ERROR",
-            "color": 0x000000,  # Black
+            "color": 0x000000,
             "description": f"Failure detected in **{component}**.",
             "fields": [
-                {"name": "Error Details", "value": f"
-http://googleusercontent.com/immersive_entry_chip/0
-
-**Confidence rating (1–10): 10**
+                {"name": "Error Details", "value": formatted_error, "inline": False},
+            ]
+        }
+        await self._send_payload(embed)
