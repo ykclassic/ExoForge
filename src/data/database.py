@@ -3,6 +3,7 @@ from typing import Optional, List
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.future import select
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.pool import QueuePool
 
 from src.config import EnvironmentConfig
 from src.data.schema import Base, DBSignal, DBTrade, DBOrder
@@ -15,25 +16,25 @@ logger = logging.getLogger("trading.data.database")
 class DatabaseClient:
     """
     Production-grade asynchronous PostgreSQL interface for Supabase.
-    Manages connection pooling, session lifecycle, and ORM translations.
     """
 
     def __init__(self, config: EnvironmentConfig):
-        # HARD FAIL-SAFE: Ensure the connection string uses the asyncpg driver.
-        # This prevents SQLAlchemy from attempting to load the synchronous psycopg2 driver.
         db_url = config.SUPABASE_DB_URL
+        # Ensure connection string is formatted for asyncpg
         if db_url.startswith("postgres://"):
             db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
         elif db_url.startswith("postgresql://") and not db_url.startswith("postgresql+asyncpg://"):
             db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-        # Asyncpg engine creation
+        # Optimized for Transaction Pooler (port 6543)
         self.engine = create_async_engine(
             db_url,
             echo=False,
+            poolclass=QueuePool,
             pool_size=10,
             max_overflow=20,
-            pool_recycle=1800, # Recycle connections every 30 mins to prevent stale drops
+            pool_recycle=300, 
+            pool_pre_ping=True, # Validates connections before using them
         )
         self.AsyncSessionLocal = async_sessionmaker(
             bind=self.engine, 
@@ -42,7 +43,6 @@ class DatabaseClient:
         )
 
     async def initialize_schema(self):
-        """Creates all tables if they do not exist. (Used for initial deployment)"""
         try:
             async with self.engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
@@ -52,7 +52,6 @@ class DatabaseClient:
             raise
 
     async def save_signal(self, signal: Signal) -> bool:
-        """Persists a newly generated trade signal to the database."""
         async with self.AsyncSessionLocal() as session:
             try:
                 db_signal = DBSignal(
@@ -79,7 +78,6 @@ class DatabaseClient:
                 return False
 
     async def save_trade(self, trade: Trade) -> bool:
-        """Records a new active trade resulting from a successful entry order."""
         async with self.AsyncSessionLocal() as session:
             try:
                 db_trade = DBTrade(
@@ -100,12 +98,10 @@ class DatabaseClient:
                 return False
 
     async def update_trade(self, trade: Trade) -> bool:
-        """Updates an existing trade (e.g., closing it out with final PnL)."""
         async with self.AsyncSessionLocal() as session:
             try:
                 result = await session.execute(select(DBTrade).where(DBTrade.id == trade.trade_id))
                 db_trade = result.scalar_one_or_none()
-                
                 if db_trade:
                     db_trade.status = trade.status.name
                     db_trade.exit_price = trade.exit_price
@@ -120,7 +116,6 @@ class DatabaseClient:
                 return False
 
     async def save_order(self, order: Order) -> bool:
-        """Records an execution order (entry or exit)."""
         async with self.AsyncSessionLocal() as session:
             try:
                 db_order = DBOrder(
@@ -143,5 +138,4 @@ class DatabaseClient:
                 return False
 
     async def close(self):
-        """Disposes of the database connection engine cleanly."""
         await self.engine.dispose()
