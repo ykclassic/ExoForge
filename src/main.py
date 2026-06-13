@@ -41,7 +41,7 @@ class BotOrchestrator:
 
     async def initialize(self):
         """Prepares asynchronous connections before starting the loop."""
-        trading_logger.info("Initializing EXOFORGE Bot infrastructure...")
+        trading_logger.info("Initializing MarketForge-Apex Bot infrastructure...")
         await self.db.initialize_schema()
         trading_logger.info("Database schema validated.")
         
@@ -69,7 +69,8 @@ class BotOrchestrator:
     async def fetch_dataframe(self, symbol: str, interval: str) -> pd.DataFrame:
         """Fetches live OHLCV data from Gate.io and parses it into a DataFrame."""
         try:
-            # Gate.io candlestick format: [timestamp, volume, close, high, low, open]
+            # Gate.io V4 candlestick format: 
+            # [timestamp, quote_volume, close, high, low, open, base_volume, is_closed]
             response = await self.exchange._request(
                 "GET", 
                 "/spot/candlesticks", 
@@ -79,8 +80,11 @@ class BotOrchestrator:
             if not response or not isinstance(response, list):
                 return pd.DataFrame()
                 
-            df = pd.DataFrame(response, columns=["timestamp", "volume", "close", "high", "low", "open", "quote_volume", "trades"])
-            for col in ["volume", "close", "high", "low", "open"]:
+            # Properly mapping all 8 elements returned by the exchange
+            df = pd.DataFrame(response, columns=["timestamp", "quote_volume", "close", "high", "low", "open", "volume", "is_closed"])
+            
+            # Convert numeric columns to float, ensuring TA tools receive standard data types
+            for col in ["quote_volume", "close", "high", "low", "open", "volume"]:
                 df[col] = df[col].astype(float)
                 
             df["timestamp"] = pd.to_datetime(df["timestamp"].astype(int), unit="s")
@@ -170,7 +174,7 @@ class BotOrchestrator:
         self.register_signal_handlers()
         
         self.is_running = True
-        trading_logger.info("EXOFORGE main loop active. Listening to market data.")
+        trading_logger.info("MarketForge-Apex main loop active. Listening to market data.")
         
         try:
             while self.is_running:
@@ -188,7 +192,7 @@ class BotOrchestrator:
 
 async def health_check(request):
     """Minimal endpoint to satisfy Render's web service requirements."""
-    return web.Response(text="EXOFORGE Trading Bot is currently active and healthy.", status=200)
+    return web.Response(text="MarketForge-Apex Trading Bot is currently active and healthy.", status=200)
 
 async def run_web_server():
     """Initializes the background web server."""
