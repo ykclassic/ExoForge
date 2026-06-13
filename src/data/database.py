@@ -30,7 +30,6 @@ class DatabaseClient:
         self.engine = create_async_engine(
             db_url,
             echo=False,
-            poolclass=QueuePool,
             pool_size=10,
             max_overflow=20,
             pool_recycle=300, 
