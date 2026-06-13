@@ -3,7 +3,6 @@ from typing import Optional, List
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.future import select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.pool import QueuePool
 
 from src.config import EnvironmentConfig
 from src.data.schema import Base, DBSignal, DBTrade, DBOrder
@@ -16,6 +15,7 @@ logger = logging.getLogger("trading.data.database")
 class DatabaseClient:
     """
     Production-grade asynchronous PostgreSQL interface for Supabase.
+    Configured for compatibility with PgBouncer (Transaction Pooler).
     """
 
     def __init__(self, config: EnvironmentConfig):
@@ -26,14 +26,15 @@ class DatabaseClient:
         elif db_url.startswith("postgresql://") and not db_url.startswith("postgresql+asyncpg://"):
             db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-        # Optimized for Transaction Pooler (port 6543)
+        # CRITICAL FIX: statement_cache_size=0 for PgBouncer compatibility
         self.engine = create_async_engine(
             db_url,
             echo=False,
             pool_size=10,
             max_overflow=20,
-            pool_recycle=300, 
-            pool_pre_ping=True, # Validates connections before using them
+            pool_recycle=300,
+            pool_pre_ping=True,
+            connect_args={"statement_cache_size": 0} 
         )
         self.AsyncSessionLocal = async_sessionmaker(
             bind=self.engine, 
