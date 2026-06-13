@@ -1,4 +1,4 @@
-# Use official Python 3.10 slim image for a reduced attack surface and smaller footprint
+# Use official Python 3.10 slim image for a reduced attack surface
 FROM python:3.10-slim as builder
 
 # Set environment variables to optimize Python runtime
@@ -28,11 +28,14 @@ RUN addgroup --system botgroup && adduser --system --group botuser
 COPY src/ ./src/
 COPY config/config.yaml ./config/config.yaml
 
-# Create logs directory and assign permissions to the non-root user
+# Create logs directory and assign ownership to the non-root user
 RUN mkdir logs && chown -R botuser:botgroup /app
 
 # Switch to the non-root user
 USER botuser
 
-# Command to run the orchestrator
+# Expose the port for Render's Web Service health check
+EXPOSE 8080
+
+# Command to run the orchestrator and web server
 CMD ["python", "-m", "src.main"]
